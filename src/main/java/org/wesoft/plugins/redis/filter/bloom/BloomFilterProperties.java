@@ -16,6 +16,6 @@ public class BloomFilterProperties {
     private float fpp = 0.01F;
 
     /** 预加载期望值 */
-    private int expectedInsertions = 0;
+    private int expectedInsertions = 1;
 
 }
