@@ -6,6 +6,7 @@ spring:
     port: 6379
 bloom:
   filter:
-    fpp: 0F
-    expectedInsertions: 100
+    fpp: 0.01F
+    filter-name: bloom:filter
+    expected-insertions: 100
 
