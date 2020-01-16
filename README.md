@@ -2,7 +2,7 @@
 
 ## application.properties 配置
 bloom.filter.fpp = 0.01F # 容错率配置 (0.0 ~ 1.0)  
-bloom.filter.filter-name = bloom:filter # 过滤器名称，对应 RedisKey
+bloom.filter.filter-name = bloom:filter # 过滤器名称，对应 RedisKey  
 bloom.filter.expected-insertions = 100 # 预计容量大小
 
 ## 使用
