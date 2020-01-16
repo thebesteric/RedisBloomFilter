@@ -1,0 +1,11 @@
+server:
+  port: 8080
+spring:
+  redis:
+    host: 127.0.0.1
+    port: 6379
+bloom:
+  filter:
+    fpp: 0F
+    expectedInsertions: 100
+
