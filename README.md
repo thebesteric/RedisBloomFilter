@@ -6,7 +6,7 @@ bloom.filter.filter-name = bloom:filter # 过滤器名称，对应 RedisKey
 bloom.filter.expected-insertions = 100 # 预计容量大小
 
 ## 使用
-配置预计容量大小（必须）
+配置预计容量大小（必须）  
 bloom.filter.expected-insertions = 100
 
 @Autowired  
