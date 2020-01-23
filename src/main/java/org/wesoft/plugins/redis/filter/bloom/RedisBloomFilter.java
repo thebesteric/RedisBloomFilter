@@ -27,15 +27,22 @@ public class RedisBloomFilter<T> {
     private RedisTemplate redisTemplate;
 
     /** 预计数位 */
-    long numBits;
+    private long numBits;
 
     /** 哈希函数数量 */
-    int numHashFunctions;
+    private int numHashFunctions;
+
+    /** Bloom 过滤器中元素数量 */
+    private long count;
 
     @PostConstruct
-    private void init() {
-        float fpp = bloomFilterProperties.getFpp();
-        int expectedInsertions = bloomFilterProperties.getExpectedInsertions();
+    private void postConstruct() {
+        init(null, null);
+    }
+
+    private void init(Long expectedInsertions, Float fpp) {
+        fpp = fpp == null ? bloomFilterProperties.getFpp() : fpp;
+        expectedInsertions = expectedInsertions == null ? bloomFilterProperties.getExpectedInsertions() : expectedInsertions;
         checkArgument(expectedInsertions >= 0, "Expected insertions (%s) must be >= 0", expectedInsertions);
         checkArgument(fpp > 0.0, "False positive probability (%s) must be > 0.0", fpp);
         checkArgument(fpp < 1.0, "False positive probability (%s) must be < 1.0", fpp);
@@ -44,20 +51,38 @@ public class RedisBloomFilter<T> {
         redisTemplate.setKeySerializer(new StringRedisSerializer());
     }
 
-    public void reload(List<T> keys) {
+    /**
+     * 重新加载布隆过滤器
+     *
+     * @param keys   要添加的 keys
+     * @param delete 是否删除原有过滤器
+     */
+    public void reload(List<T> keys, boolean... delete) {
         new Thread(() -> {
-            if (this.delete()) {
-                for (T key : keys) {
-                    this.put(key);
+            if (delete != null && delete.length > 0) {
+                if (delete[0]) {
+                    this.delete();
+                    init((long) keys.size(), 0.01f);
                 }
+            }
+            for (T key : keys) {
+                this.put(key);
             }
         }).start();
     }
 
-    public Boolean delete() {
-        return redisTemplate.delete(bloomFilterProperties.getFilterName());
+    /**
+     * 删除 Bloom 过滤器
+     */
+    public void delete() {
+        redisTemplate.delete(bloomFilterProperties.getFilterName());
     }
 
+    /**
+     * key 是否存在
+     *
+     * @param key key
+     */
     public boolean exist(T key) {
         long[] indexes = getIndexes(key);
         List<Boolean> list = redisTemplate.executePipelined((RedisCallback<Object>) redisConnection -> {
@@ -71,6 +96,11 @@ public class RedisBloomFilter<T> {
         return !list.contains(false);
     }
 
+    /**
+     * 添加
+     *
+     * @param key key
+     */
     public void put(T key) {
         long[] indexes = getIndexes(key);
         redisTemplate.executePipelined((RedisCallback<Object>) redisConnection -> {
@@ -78,9 +108,29 @@ public class RedisBloomFilter<T> {
             for (long index : indexes) {
                 redisConnection.setBit(bloomFilterProperties.getFilterName().getBytes(), index, true);
             }
+            count++;
             redisConnection.close();
             return null;
         });
+    }
+
+    /**
+     * Bloom 过滤器中元素的数量
+     */
+    public long count() {
+        return count;
+    }
+
+    /**
+     * Bloom 过滤器中位为 true 的数量
+     */
+    public Long bitCount() {
+        Object object = redisTemplate.execute((RedisCallback<Long>) redisConnection -> {
+            Long result = redisConnection.bitCount(bloomFilterProperties.getFilterName().getBytes());
+            redisConnection.close();
+            return result;
+        });
+        return object == null ? 0L : (Long) object;
     }
 
     private long[] getIndexes(T key) {
