@@ -30,6 +30,11 @@ public class TestController {
         return redisBloomFilter.exist(key);
     }
 
+    @GetMapping("/count")
+    public Object count() {
+        return redisBloomFilter.count();
+    }
+
     @GetMapping("/reload")
     public Object reload() {
         List<Integer> keys = new ArrayList<>();
