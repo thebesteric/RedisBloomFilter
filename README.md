@@ -15,6 +15,8 @@ private RedisBloomFilter<Integer> redisBloomFilter;
 ## API
 - public boolean exist(T key)：验证 key 是否存在
 - public void put(T key)：添加 key 到 bloom 过滤器
-- public Boolean delete()：删除 bloom 过滤器
+- public void delete()：删除 bloom 过滤器
 - public void reload(List<T> keys)：重新加载 bloom 过滤器
+- public long count()：返回布隆过滤器元素数量
+- public Long bitCount()：返回布隆过滤器中 1 值数量
 
