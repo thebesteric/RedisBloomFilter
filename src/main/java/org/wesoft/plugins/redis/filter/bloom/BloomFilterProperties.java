@@ -1,12 +1,14 @@
 package org.wesoft.plugins.redis.filter.bloom;
 
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 @ConfigurationProperties(prefix = "bloom.filter")
 @Component
-@Data
+@Getter
+@Setter
 public class BloomFilterProperties {
 
     /** 过滤器名称 */
@@ -16,6 +18,6 @@ public class BloomFilterProperties {
     private float fpp = 0.01F;
 
     /** 预加载期望值 */
-    private long expectedInsertions = 1000L;
+    private long expectedInsertions = 10000L;
 
 }

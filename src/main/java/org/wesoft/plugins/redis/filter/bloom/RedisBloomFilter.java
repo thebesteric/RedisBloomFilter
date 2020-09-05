@@ -40,31 +40,32 @@ public class RedisBloomFilter<T> {
         init(null, null);
     }
 
+    /**
+     * 初始化方法
+     *
+     * @param expectedInsertions 预期要插入的大小
+     * @param fpp                容错率
+     */
     private void init(Long expectedInsertions, Float fpp) {
         fpp = fpp == null ? bloomFilterProperties.getFpp() : fpp;
         expectedInsertions = expectedInsertions == null ? bloomFilterProperties.getExpectedInsertions() : expectedInsertions;
         checkArgument(expectedInsertions >= 0, "Expected insertions (%s) must be >= 0", expectedInsertions);
         checkArgument(fpp > 0.0, "False positive probability (%s) must be > 0.0", fpp);
         checkArgument(fpp < 1.0, "False positive probability (%s) must be < 1.0", fpp);
-        this.numBits = optimalNumOfBits(expectedInsertions, fpp);
-        this.numHashFunctions = optimalNumOfHashFunctions(expectedInsertions, numBits);
+        this.numBits = optimalNumOfBits(expectedInsertions, fpp); // bit 位的数量
+        this.numHashFunctions = optimalNumOfHashFunctions(expectedInsertions, numBits); // 哈希函数的数量
         redisTemplate.setKeySerializer(new StringRedisSerializer());
     }
 
     /**
-     * 重新加载布隆过滤器
+     * 重新加载布隆过滤器，会清空原来的布隆过滤器
      *
-     * @param keys   要添加的 keys
-     * @param delete 是否删除原有过滤器
+     * @param keys keys
      */
-    public void reload(List<T> keys, boolean... delete) {
+    public void reload(List<T> keys) {
         new Thread(() -> {
-            if (delete != null && delete.length > 0) {
-                if (delete[0]) {
-                    this.delete();
-                    init((long) keys.size(), 0.01f);
-                }
-            }
+            this.delete();
+            init((long) keys.size(), 0.01f);
             for (T key : keys) {
                 this.put(key);
             }
@@ -99,19 +100,21 @@ public class RedisBloomFilter<T> {
     /**
      * 添加
      *
-     * @param key key
+     * @param keys keys
      */
-    public void put(T key) {
-        long[] indexes = getIndexes(key);
-        redisTemplate.executePipelined((RedisCallback<Object>) redisConnection -> {
-            redisConnection.openPipeline();
-            for (long index : indexes) {
-                redisConnection.setBit(bloomFilterProperties.getFilterName().getBytes(), index, true);
-            }
-            count++;
-            redisConnection.close();
-            return null;
-        });
+    public void put(T... keys) {
+        for (T key : keys) {
+            long[] indexes = getIndexes(key);
+            redisTemplate.executePipelined((RedisCallback<Object>) redisConnection -> {
+                redisConnection.openPipeline();
+                for (long index : indexes) {
+                    redisConnection.setBit(bloomFilterProperties.getFilterName().getBytes(), index, true);
+                }
+                count++;
+                redisConnection.close();
+                return null;
+            });
+        }
     }
 
     /**
@@ -133,6 +136,9 @@ public class RedisBloomFilter<T> {
         return object == null ? 0L : (Long) object;
     }
 
+    /**
+     * 根据 key 获取下标
+     */
     private long[] getIndexes(T key) {
         long hash1 = hash(key);
         long hash2 = hash1 >>> 16;
@@ -142,6 +148,7 @@ public class RedisBloomFilter<T> {
             if (combinedHash < 0) {
                 combinedHash = ~combinedHash;
             }
+            // 对哈希值取余，保证不超过 bit 位的长度
             result[i] = combinedHash % numBits;
         }
         return result;
